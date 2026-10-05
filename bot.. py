@@ -1,0 +1,71 @@
+Here's the full starter. Two files, one command to deploy.
+📁 Project structure
+vocab-bot/
+├── bot.py
+├── requirements.txt
+├── Procfile
+└── .env (don't push this)
+1. bot.py
+import os
+import json
+import random
+import logging
+import requests
+from pathlib import Path
+from telegram import Update
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    MessageHandler,
+    ContextTypes,
+    filters,
+)
+
+# --- Config ---
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+DICT_API = "https://api.dictionaryapi.dev/api/v2/entries/en"
+DATA_FILE = Path("user_words.json")
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
+
+# --- Storage (tiny JSON file, fine for one user; switch to a DB if multi-user) ---
+def load_data() -> dict:
+    if DATA_FILE.exists():
+        return json.loads(DATA_FILE.read_text(encoding="utf-8"))
+    return {"users": {}}
+
+def save_data(data: dict):
+    DATA_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+# --- Dictionary lookup ---
+def fetch_word(word: str):
+    try:
+        r = requests.get(f"{DICT_API}/{word.lower()}", timeout=10)
+        if r.status_code != 200:
+            return None
+        return r.json()[0]
+    except Exception as e:
+        log.error(f"dict error: {e}")
+        return None
+
+def format_definition(word_data: dict) -> str:
+    word = word_data.get("word", "?").upper()
+    phonetics = word_data.get("phonetic") or ""
+    lines = [f"📖 *{word}*  _{phonetics}_", ""]
+
+    meanings = word_data.get("meanings", [])
+    for m in meanings[:2]:  # cap at 2 meanings to keep message readable
+        pos = m.get("partOfSpeech", "")
+        defs = m.get("definitions", [])
+        if not defs:
+            continue
+        lines.append(f"_{pos}_")
+        for i, d in enumerate(defs[:2], 1):
+            lines.append(f"{i}. {d.get('definition', '')}")
+            ex = d.get("example")
+            if ex:
+                lines.append(f"   _e.g._ \"{ex}\"")
+        syns = m.get("synonyms", [])
+        if syns:
+    
