@@ -15,7 +15,7 @@ from telegram.ext import (
 
 # --- Config ---
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-DICT_API = "https://api.dictionaryapi.dev/api/v2/entries/en"
+DICT_API = "https://api.dictionaryapi.dev/api/v2/entries/en/<word>"
 DATA_FILE = Path("user_words.json")
 
 logging.basicConfig(level=logging.INFO)
